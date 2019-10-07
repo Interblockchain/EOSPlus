@@ -1,0 +1,33 @@
+{
+  "name": "transeos",
+  "version": "1.0.1",
+  "main": "transeos.js",
+  "author": {
+    "name": "Paul Boulanger"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "node ./test.js",
+    "server": "babel-node ./test.js",
+    "dev": "NODE_ENV=development npm-run-all server"
+  },
+  "dependencies": {
+    "axios": "^0.19.0",
+    "bignumber.js": "^8.1.1",
+    "eos-transit": "^4.0.1",
+    "eos-transit-scatter-provider": "^4.0.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.6.2",
+    "@babel/core": "^7.6.2",
+    "@babel/node": "^7.6.2",
+    "@babel/preset-env": "^7.6.2",
+    "@types/express": "^4.16.0",
+    "@types/joi": "^13.6.0",
+    "@types/mongoose": "^5.2.19",
+    "@types/node": "^10.9.4",
+    "@types/uuid": "^3.4.4",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.0.3"
+  }
+}
