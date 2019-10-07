@@ -1,5 +1,6 @@
 # EOSPlus
 A small library which interfaces the actions of the basic Transledger C++ contract deployed on various EOS chains.
+In order to do so, we must first login into a wallet using the [eos-transit package](https://github.com/eosnewyork/eos-transit/tree/master/packages/eos-transit#basic-usage-example) and gain the required authorities for teh accounts performing the actions. 
 They are all bunched here for easy access, easy modification and to give a uniform convention for the different recurrent quantities.
 
 #Installation
@@ -9,7 +10,7 @@ In the working directory, simply issue:
 
 # Usage
 
-Simply import the module and contruct a new instance by passing the connection parameters to the constructor.
+Simply import the module and construct a new instance by passing the connection parameters to the constructor.
 
 ```javascript
 const EOSPlus = require("EOSPlus");
@@ -29,7 +30,7 @@ const eosplus = new EOSPlus(params);
 Then you can invoke the methods, like for example:
 
 ```javascript
-let value = eosplus.transfer(wallet, from, to, spender, amount, decimals, symbol, memo);
+let value = eosplus.transferfrom(wallet, from, to, spender, amount, decimals, symbol, memo);
 ```
 
 # Methods
