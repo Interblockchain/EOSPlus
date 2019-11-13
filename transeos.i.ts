@@ -7,5 +7,6 @@ export interface Network {
 
 export interface Parameters {
     contractAddress: string,
+    exchangeAddress: string,
     network: Network
 }
