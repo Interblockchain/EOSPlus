@@ -1,8 +1,7 @@
 import BigNumber from "./bignumber_min.js"
 import axios from 'axios';
 import { Network, Parameters } from "./transeos.i";
-import { Wallet } from 'eos-transit';
-// import { UInt64 } from 'int64_t';
+import { UInt64 } from 'int64_t';
 
 class transeos {
     private contractAddress: string;
@@ -13,31 +12,6 @@ class transeos {
         this.contractAddress = params.contractAddress;
         this.network = params.network;
         this.exchangeAddress = params.exchangeAddress;
-    }
-
-    /*
-    This method is used to sign and send actions to the EOS network.
-    Arguments:
-        wallet: transit-eos wallet object which provide keys for the account performing the actions
-        actions: array of actions
-    An action is an object of the form:
-        {   account: account of the contract,
-            name: name of the function to run on the contract,
-            authorization: [ { actor: account taking the action, permission: permission level (usually "active") } ],
-            data: { the arguments of the function call of the contract}
-        }
-    Returns:
-        result: the result from the blockchain for the action
-    */
-    async sendAction(wallet: Wallet, actions: any) {
-        try {
-            let result = await wallet.eosApi.transact({ actions: actions }, { broadcast: true, blocksBehind: 3, expireSeconds: 60 });
-            console.log('Transaction success!', result);
-            return result;
-        } catch (error) {
-            console.error('Transaction error :(', error);
-            throw error;
-        }
     }
 
     /*=========================================================================================
@@ -59,10 +33,8 @@ class transeos {
     Returns:
         result: the result from the blockchain for the action
     */
-    async create(wallet: Wallet, issuer: string, max_supply: string, decimals, symbol: string) {
+    async create(issuer: string, max_supply: string, decimals: any, symbol: string) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!issuer || typeof (issuer) != "string") { throw { name: "No issuer has been passed or it is not of type string", statusCode: "400", message: "Please provide an issuer for the currency." } }
         if (!max_supply) { throw { name: "No maximum supply has been passed", statusCode: "400", message: "Please provide a maximum supply for the currency." } }
         if (!decimals) { throw { name: "No decimals has been passed", statusCode: "400", message: "Please provide a number of decimal for this currency." } }
@@ -70,18 +42,10 @@ class transeos {
 
         BigNumber.set({ DECIMAL_PLACES: decimals, ROUNDING_MODE: BigNumber.ROUND_DOWN });
         let value = new BigNumber(max_supply, 10);
-        let result = await this.sendAction(wallet, [
-            {
-                account: this.contractAddress,
-                name: 'create',
-                authorization: [{ actor: this.contractAddress, permission: "active" }],
-                data: {
-                    issuer: issuer,
-                    max_supply: `${value.toString()} ${symbol}`
-                }
-            }
-        ]);
-        return result;
+        return {
+            issuer: issuer,
+            max_supply: `${value.toString()} ${symbol}`
+        };
     }
 
     /*
@@ -96,10 +60,8 @@ class transeos {
     Returns:
         result: the result from the blockchain for the action
     */
-    async issue(wallet: Wallet, to: string, quantity, decimals, symbol: string, memo: string) {
+    async issue(to: string, quantity: any, decimals: any, symbol: string, memo: string) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!to || typeof (to) != "string") { throw { name: "No destination has been passed or it is not of type string", statusCode: "400", message: "Please provide a destination (to) for the issuance." } }
         if (!quantity) { throw { name: "No quantity has been passed", statusCode: "400", message: "Please provide a quantity for the issuance." } }
         if (!decimals) { throw { name: "No decimals has been passed", statusCode: "400", message: "Please provide a number of decimal for this currency." } }
@@ -108,19 +70,11 @@ class transeos {
         let _memo = (memo) ? memo : `Issue ${symbol}`;
         BigNumber.set({ DECIMAL_PLACES: decimals, ROUNDING_MODE: BigNumber.ROUND_DOWN });
         let value = new BigNumber(quantity, 10);
-        let result = await this.sendAction(wallet, [
-            {
-                account: this.contractAddress,
-                name: 'issue',
-                authorization: [{ actor: wallet.auth.accountName, permission: wallet.auth.permission }],
-                data: {
-                    to: to,
-                    quantity: `${value.toString()} ${symbol}`,
-                    memo: _memo
-                }
-            }
-        ]);
-        return result;
+        return {
+            to: to,
+            quantity: `${value.toString()} ${symbol}`,
+            memo: _memo
+        };
     }
 
     /*
@@ -136,10 +90,8 @@ class transeos {
     Returns:
         result: the result from the blockchain for the action
     */
-    async transfer(wallet: Wallet, from: string, to: string, quantity, decimals, symbol: string, memo: string) {
+    async transfer(from: string, to: string, quantity, decimals, symbol: string, memo: string) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!from || typeof (from) != "string") { throw { name: "No source account has been passed or it is not of type string", statusCode: "400", message: "Please provide a source (from) for the transaction." } }
         if (!to || typeof (to) != "string") { throw { name: "No destination has been passed or it is not of type string", statusCode: "400", message: "Please provide a destination (to) for the transaction." } }
         if (!quantity) { throw { name: "No quantity has been passed", statusCode: "400", message: "Please provide a quantity for the transaction." } }
@@ -149,20 +101,12 @@ class transeos {
         let _memo = (memo) ? memo : `Issue ${symbol}`;
         BigNumber.set({ DECIMAL_PLACES: decimals, ROUNDING_MODE: BigNumber.ROUND_DOWN });
         let value = new BigNumber(quantity, 10);
-        let result = await this.sendAction(wallet, [
-            {
-                account: this.contractAddress,
-                name: 'transfer',
-                authorization: [{ actor: from, permission: wallet.auth.permission }],
-                data: {
-                    from: from,
-                    to: to,
-                    quantity: `${value.toString()} ${symbol}`,
-                    memo: _memo
-                }
-            }
-        ]);
-        return result;
+        return {
+            from: from,
+            to: to,
+            quantity: `${value.toString()} ${symbol}`,
+            memo: _memo
+        };
     }
 
     /*
@@ -180,10 +124,8 @@ class transeos {
     Returns:
         result: the result from the blockchain for the action
     */
-    async transferfrom(wallet: Wallet, from: string, to: string, spender: string, quantity, decimals, symbol: string, memo: string) {
+    async transferfrom(from: string, to: string, spender: string, quantity, decimals, symbol: string, memo: string) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!from || typeof (from) != "string") { throw { name: "No source account has been passed or it is not of type string", statusCode: "400", message: "Please provide a source (from) for the transaction." } }
         if (!to || typeof (to) != "string") { throw { name: "No destination has been passed or it is not of type string", statusCode: "400", message: "Please provide a destination (to) for the transaction." } }
         if (!spender || typeof (spender) != "string") { throw { name: "No spender has been passed or it is not of type string", statusCode: "400", message: "Please provide a spender for the transaction." } }
@@ -194,21 +136,13 @@ class transeos {
         let _memo = (memo) ? memo : `Issue ${symbol}`;
         BigNumber.set({ DECIMAL_PLACES: decimals, ROUNDING_MODE: BigNumber.ROUND_DOWN });
         let value = new BigNumber(quantity, 10);
-        let result = this.sendAction(wallet, [
-            {
-                account: this.contractAddress,
-                name: 'transferfrom',
-                authorization: [{ actor: spender, permission: wallet.auth.permission }],
-                data: {
-                    from: from,
-                    to: to,
-                    spender: spender,
-                    quantity: `${value.toString()} ${symbol}`,
-                    memo: _memo
-                }
-            }
-        ]);
-        return result;
+        return {
+            from: from,
+            to: to,
+            spender: spender,
+            quantity: `${value.toString()} ${symbol}`,
+            memo: _memo
+        };
     }
 
     /*
@@ -223,10 +157,8 @@ class transeos {
     Returns:
         result: the result from the blockchain for the action
     */
-    async approve(wallet: Wallet, owner: string, spender: string, quantity, decimals, symbol: string) {
+    async approve(owner: string, spender: string, quantity, decimals, symbol: string) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!owner || typeof (owner) != "string") { throw { name: "No owner has been passed or it is not of type string", statusCode: "400", message: "Please provide an owner for the approval." } }
         if (!spender || typeof (spender) != "string") { throw { name: "No spender has been passed or it is not of type string", statusCode: "400", message: "Please provide a spender for the approval." } }
         if (!quantity) { throw { name: "No quantity has been passed", statusCode: "400", message: "Please provide a quantity for the approval." } }
@@ -235,19 +167,11 @@ class transeos {
 
         BigNumber.set({ DECIMAL_PLACES: decimals, ROUNDING_MODE: BigNumber.ROUND_DOWN });
         let value = new BigNumber(quantity, 10);
-        let result = await this.sendAction(wallet, [
-            {
-                account: this.contractAddress,
-                name: 'approve',
-                authorization: [{ actor: owner, permission: wallet.auth.permission }],
-                data: {
-                    owner: owner,
-                    spender: spender,
-                    quantity: `${value.toString()} ${symbol}`
-                }
-            }
-        ]);
-        return result;
+        return {
+            owner: owner,
+            spender: spender,
+            quantity: `${value.toString()} ${symbol}`
+        };
     }
 
     /*
@@ -258,7 +182,7 @@ class transeos {
     Returns:
         balances: array of strings containing the relevant balances
     */
-    async getBalance(account: string, symbol: string) {
+    async getBalance(account: string, symbol: string, page: string, limit: string) {
         if (!account) { throw { name: "Missing arguments", statusCode: "400", message: 'Account name is not provided!' } }
         try {
             let result = await axios({
@@ -275,7 +199,15 @@ class transeos {
             });
             let balances = result.data;
             if (symbol && Array.isArray(balances)) balances = balances.filter(element => element.split(" ")[1] == symbol);
-            return balances;
+            let total = balances.length;
+            if (page && limit && Array.isArray(balances)) balances = this.paginateArray(balances, parseInt(page), parseInt(limit));
+            return {
+                docs: balances,
+                total: total,
+                limit: (limit) ? parseInt(limit) : total,
+                page: (page) ? parseInt(page) : 1,
+                pages: (limit) ? Math.ceil(total / parseInt(limit)) : 1
+            };
         } catch (error) {
             throw { name: error.name, statusCode: "500", message: error.message }
         }
@@ -290,7 +222,7 @@ class transeos {
     Returns:
         rows: array of objects containing the relevant permissions
     */
-    async getAllowance(account: string, spender: string, symbol: string) {
+    async getAllowance(account: string, spender: string, symbol: string, page: string, limit: string) {
         if (!account) { throw { name: "Missing arguments", statusCode: "400", message: 'Account name is not provided!' } }
         try {
             let result = await axios({
@@ -309,7 +241,15 @@ class transeos {
             let rows = result.data.rows;
             if (spender && Array.isArray(rows)) rows = rows.filter(element => element.spender == spender);
             if (symbol && Array.isArray(rows)) rows = rows.filter(element => element.quantity.split(" ")[1] == symbol);
-            return rows;
+            let total = rows.length;
+            if (page && limit && Array.isArray(rows)) rows = this.paginateArray(rows, parseInt(page), parseInt(limit));
+            return {
+                docs: rows,
+                total: total,
+                limit: (limit) ? parseInt(limit) : total,
+                page: (page) ? parseInt(page) : 1,
+                pages: (limit) ? Math.ceil(total / parseInt(limit)) : 1
+            };
         } catch (error) {
             throw { name: error.name, statusCode: "500", message: error.message }
         }
@@ -338,10 +278,8 @@ class transeos {
      Returns:
          result: the result from the blockchain for the action
      */
-    async createOrder(wallet: Wallet, user: string, sender: string, baseAmount, baseDecimals, baseSymbol: string, counterAmount, counterDecimals, counterSymbol: string, feesAmount, memo: string, expires) {
+    async createOrder(user: string, sender: string, baseAmount, baseDecimals, baseSymbol: string, counterAmount, counterDecimals, counterSymbol: string, feesAmount, memo: string, expires) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!user || typeof (user) != "string") { throw { name: "No user has been passed or it is not of type string", statusCode: "400", message: "Please provide a user for the order." } }
         if (!sender || typeof (sender) != "string") { throw { name: "No sender has been passed or it is not of type string", statusCode: "400", message: "Please provide a sender for the order." } }
         if (!baseAmount) { throw { name: "No offer quantity has been passed", statusCode: "400", message: "Please provide an offer quantity for the order." } }
@@ -366,23 +304,17 @@ class transeos {
         let fees = new BigNumber(feesAmount, 10);
         let feesStr = fees.toString();
 
-        let result = await this.sendAction(wallet, [{
-            account: this.exchangeAddress,
-            name: 'createorder',
-            authorization: [{ actor: user, permission: wallet.auth.permission }],
-            data: {
-                user: user,
-                sender: sender,
-                key: key,
-                base: `${baseStr} ${baseSymbol}`,
-                counter: `${counterStr} ${counterSymbol}`,
-                fees: `${feesStr} GIZMO`,   //HERE CHECK TOKEN Symbol
-                memo: _memo,
-                timestamp: timestamp,
-                expires: expires
-            }
-        }]);
-        return result;
+        return {
+            user: user,
+            sender: sender,
+            key: key,
+            base: `${baseStr} ${baseSymbol}`,
+            counter: `${counterStr} ${counterSymbol}`,
+            fees: `${feesStr} GIZMO`,   //HERE CHECK TOKEN Symbol
+            memo: _memo,
+            timestamp: timestamp,
+            expires: expires
+        };
     }
 
     /*
@@ -401,10 +333,8 @@ class transeos {
      Returns:
          result: the result from the blockchain for the action
      */
-    async editOrder(wallet: Wallet, user: string, key, baseAmount, baseDecimals, baseSymbol: string, counterAmount, counterDecimals, counterSymbol: string, expires) {
+    async editOrder(user: string, key, baseAmount, baseDecimals, baseSymbol: string, counterAmount, counterDecimals, counterSymbol: string, expires) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!user || typeof (user) != "string") { throw { name: "No user has been passed or it is not of type string", statusCode: "400", message: "Please provide a user for the order." } }
         if (!key) { throw { name: "No key has been passed", statusCode: "400", message: "Please provide a key identifying the order to modify." } }
         if (!baseAmount) { throw { name: "No offer quantity has been passed", statusCode: "400", message: "Please provide an offer quantity for the order." } }
@@ -422,18 +352,12 @@ class transeos {
         let counter = new BigNumber(counterAmount, 10);
         let counterStr = counter.toString();
 
-        let result = await this.sendAction(wallet, [{
-            account: this.exchangeAddress,
-            name: 'editorder',
-            authorization: [{ actor: user, permission: wallet.auth.permission }],
-            data: {
-                key: key,
-                base: `${baseStr} ${baseSymbol}`,
-                counter: `${counterStr} ${counterSymbol}`,
-                expires: expires
-            }
-        }]);
-        return result;
+        return {
+            key: key,
+            base: `${baseStr} ${baseSymbol}`,
+            counter: `${counterStr} ${counterSymbol}`,
+            expires: expires
+        };
     }
 
     /*
@@ -446,22 +370,13 @@ class transeos {
      Returns:
          result: the result from the blockchain for the action
      */
-    async cancelOrder(wallet: Wallet, user: string, key) {
+    async cancelOrder(user: string, key) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!user || typeof (user) != "string") { throw { name: "No user has been passed or it is not of type string", statusCode: "400", message: "Please provide a user for the order." } }
         if (!key) { throw { name: "No key has been passed", statusCode: "400", message: "Please provide a key identifying the order to delete." } }
-
-        let result = await this.sendAction(wallet, [{
-            account: this.exchangeAddress,
-            name: 'cancelorder',
-            authorization: [{ actor: user, permission: wallet.auth.permission }],
-            data: {
-                key: key
-            }
-        }]);
-        return result;
+        return {
+            key: key
+        };
     }
 
     /*
@@ -474,22 +389,13 @@ class transeos {
          Returns:
              result: the result from the blockchain for the action
          */
-    async retireOrder(wallet: Wallet, sender: string, key) {
+    async retireOrder(sender: string, key) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!sender || typeof (sender) != "string") { throw { name: "No sender has been passed or it is not of type string", statusCode: "400", message: "Please provide a sender for the order." } }
         if (!key) { throw { name: "No key has been passed", statusCode: "400", message: "Please provide a key identifying the order to retire." } }
-
-        let result = await this.sendAction(wallet, [{
-            account: this.exchangeAddress,
-            name: 'retireorder',
-            authorization: [{ actor: sender, permission: wallet.auth.permission }],
-            data: {
-                key: key
-            }
-        }]);
-        return result;
+        return {
+            key: key
+        };
     }
 
     /*
@@ -516,10 +422,8 @@ class transeos {
      Returns:
          rows: the result from the blockchain for the action
      */
-    async settleOrders(wallet: Wallet, sender: string, makerKey, takerKey, makerBaseAmount, makerBaseDecimals, makerBaseSymbol: string, makerCounterAmount, makerCounterDecimals, makerCounterSymbol: string, takerBaseAmount, takerBaseDecimals, takerBaseSymbol: string, takerCounterAmount, takerCounterDecimals, takerCounterSymbol: string, memo: string) {
+    async settleOrders(sender: string, makerKey, takerKey, makerBaseAmount, makerBaseDecimals, makerBaseSymbol: string, makerCounterAmount, makerCounterDecimals, makerCounterSymbol: string, takerBaseAmount, takerBaseDecimals, takerBaseSymbol: string, takerCounterAmount, takerCounterDecimals, takerCounterSymbol: string, memo: string) {
         //Validation
-        if (!wallet) { throw { name: "No wallet has been passed", statusCode: "400", message: "Please provide an authenticated wallet." } }
-        if (!wallet.auth) { throw { name: "No auth information has been passed with wallet", statusCode: "400", message: "Please provide an authenticated wallet." } }
         if (!sender || typeof (sender) != "string") { throw { name: "No sender has been passed or it is not of type string", statusCode: "400", message: "Please provide a sender for the action." } }
         if (!makerKey) { throw { name: "No maker key has been passed", statusCode: "400", message: "Please provide a maker key identifying the order to settle." } }
         if (!takerKey) { throw { name: "No taker key has been passed", statusCode: "400", message: "Please provide a taker key identifying the order to settle." } }
@@ -551,21 +455,62 @@ class transeos {
         counter = new BigNumber(takerCounterAmount, 10);
         let takerCounterStr = counter.toString();
 
-        let result = await this.sendAction(wallet, [{
-            account: this.exchangeAddress,
-            name: 'settleorders',
-            authorization: [{ actor: sender, permission: wallet.auth.permission }],
-            data: {
-                maker: makerKey,                                              // Key of the maker order
-                taker: takerKey,                                              // Key of the taker order
-                quantity_maker: makerBaseStr + " " + makerBaseSymbol,         // Quantity payed by the maker
-                deduct_maker: makerCounterStr + " " + makerCounterSymbol,     // Quantity to deduct from maker.counter
-                quantity_taker: takerBaseStr + " " + takerBaseSymbol,         // Quantity payed by the taker
-                deduct_taker: takerCounterStr + " " + takerCounterSymbol,     // Quantity to deduct from taker.counter
-                memo: memo
-            }
-        }]);
-        return result;
+        return {
+            maker: makerKey,                                              // Key of the maker order
+            taker: takerKey,                                              // Key of the taker order
+            quantity_maker: makerBaseStr + " " + makerBaseSymbol,         // Quantity payed by the maker
+            deduct_maker: makerCounterStr + " " + makerCounterSymbol,     // Quantity to deduct from maker.counter
+            quantity_taker: takerBaseStr + " " + takerBaseSymbol,         // Quantity payed by the taker
+            deduct_taker: takerCounterStr + " " + takerCounterSymbol,     // Quantity to deduct from taker.counter
+            memo: memo
+        };
+    }
+
+    /*
+     This method allows to query the full order list directly from the blockchain state.
+     Can be called by anybody as this information is public.
+     The arguments are optional and contained in an object:
+        params.user: Filter the results to keep only the orders from user (OPTIONAL)
+        params.sender: Filter the results to keep only the orders originating from sender (OPTIONAL)
+        params.baseSymbol: Filter the results to keep only orders offering baseSymbol currency (OPTIONAL)
+        params.counterSymbol: Filter the results to keep only orders asking for counterSymbol currency (OPTIONAL)
+     Returns:
+         result: the paginated list of orders on the blockchain
+*/
+    async getOrders(params) {
+        try {
+            let result = await axios({
+                method: 'POST',
+                url: (this.network.port) ? `${this.network.protocol}://${this.network.host}:${this.network.port}/v1/chain/get_table_rows` : `${this.network.protocol}://${this.network.host}/v1/chain/get_table_rows`,
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                data: {
+                    code: this.exchangeAddress,
+                    scope: this.exchangeAddress,
+                    table: "orders",
+                    json: true
+                }
+            });
+            let rows = result.data.rows;
+
+            if (params && params.user && Array.isArray(rows)) rows = rows.filter(element => element.user == params.user);
+            if (params && params.sender && Array.isArray(rows)) rows = rows.filter(element => element.sender == params.sender);
+            if (params && params.baseSymbol && Array.isArray(rows)) rows = rows.filter(element => element.base.split(" ")[1] == params.baseSymbol);
+            if (params && params.counterSymbol && Array.isArray(rows)) rows = rows.filter(element => element.counter.split(" ")[1] == params.counterSymbol);
+            let total = rows.length;
+            if (params && params.page && params.limit && Array.isArray(rows)) rows = this.paginateArray(rows, parseInt(params.page), parseInt(params.limit));
+
+            return {
+                docs: rows,
+                total: total,
+                limit: (params.limit) ? parseInt(params.limit) : total,
+                page: (params.page) ? parseInt(params.page) : 1,
+                pages: (params.limit) ? Math.ceil(total / parseInt(params.limit)) : 1
+            };
+        } catch (error) {
+            throw { name: error.name, statusCode: "500", message: error.message }
+        }
     }
 
     /*=========================================================================================
@@ -582,53 +527,57 @@ class transeos {
         }
     }
 
-    // strToName(str: string) {
-    //     let value = new UInt64(0x0);
-    //     if (str.length > 13) {
-    //         throw { message: "string is too long to be a valid name" };
-    //     }
-    //     if (str.length == 0) {
-    //         return;
-    //     }
-    //     let n = Math.min(str.length, 12);
-    //     for (var i = 0; i < n; ++i) {
-    //         value = value.shiftLeft(5);
-    //         value = value.or(new UInt64(this.charToValue(str.charAt(i))));
-    //     }
-    //     value = value.shiftLeft(4 + 5 * (12 - n));
-    //     if (str.length == 13) {
-    //         let v = this.charToValue(str.charAt(12));
-    //         if (v > 15) {
-    //             throw { message: "thirteenth character in name cannot be a letter that comes after j" };
-    //         }
-    //         value = value.or(new UINT64(v));
-    //     }
-    //     return value;
-    // }
+    strToName(str: string) {
+        let value = new UInt64(0x0);
+        if (str.length > 13) {
+            throw { message: "string is too long to be a valid name" };
+        }
+        if (str.length == 0) {
+            return;
+        }
+        let n = Math.min(str.length, 12);
+        for (var i = 0; i < n; ++i) {
+            value = value.shiftLeft(5);
+            value = value.or(new UInt64(this.charToValue(str.charAt(i))));
+        }
+        value = value.shiftLeft(4 + 5 * (12 - n));
+        if (str.length == 13) {
+            let v = this.charToValue(str.charAt(12));
+            if (v > 15) {
+                throw { message: "thirteenth character in name cannot be a letter that comes after j" };
+            }
+            value = value.or(new UInt64(v));
+        }
+        return value;
+    }
 
-    // strToSymbol(str: string) {
-    //     if (str.length > 7) {
-    //         throw { message: "string is too long to be a valid symbol_code" };
-    //     }
-    //     let value = new UInt64(0x0);
-    //     for (let i = str.length - 1; i >= 0; i--) {
-    //         let cv = str.charCodeAt(i);
-    //         if (cv < 65 || cv > 90) { throw { message: "only uppercase letters allowed in symbol_code string" } }
-    //         value = value.shiftLeft(8);
-    //         value = value.or(new UInt64(cv));
-    //     }
-    //     return value;
-    // }
+    strToSymbol(str: string) {
+        if (str.length > 7) {
+            throw { message: "string is too long to be a valid symbol_code" };
+        }
+        let value = new UInt64(0x0);
+        for (let i = str.length - 1; i >= 0; i--) {
+            let cv = str.charCodeAt(i);
+            if (cv < 65 || cv > 90) { throw { message: "only uppercase letters allowed in symbol_code string" } }
+            value = value.shiftLeft(8);
+            value = value.or(new UInt64(cv));
+        }
+        return value;
+    }
 
     getKeyForOrder(user: string, baseSymbol: string, timestamp) {
-        // let account = this.strToName(user);
-        // // console.log("account: " + account.toString());
-        // let asset = this.strToSymbol(baseSymbol);
-        // // console.log("asset: " + asset.toString());
-        // let time = new UInt64(Number(timestamp));
-        // // console.log("time: " + time.toString());
-        // return account.add(asset).add(time).toString();
-        return {user: user, baseSymbol: baseSymbol, timestamp: timestamp}
+        let account = this.strToName(user);
+        // console.log("account: " + account.toString());
+        let asset = this.strToSymbol(baseSymbol);
+        // console.log("asset: " + asset.toString());
+        let time = new UInt64(Number(timestamp));
+        // console.log("time: " + time.toString());
+        return account.add(asset).add(time).toString();
+    }
+
+    paginateArray(array: any, page_number: number, page_size: number) {
+        --page_number; // because pages logically start with 1, but technically with 0
+        return array.slice(page_number * page_size, (page_number + 1) * page_size);
     }
 }
 
