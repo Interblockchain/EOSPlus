@@ -1,3 +1,7 @@
+/* ==================================================
+(c) 2019 Copyright Transledger inc. All rights reserved 
+================================================== */
+
 import BigNumber from "./bignumber_min.js"
 import axios from 'axios';
 import { Network, Parameters } from "./transeos.i";

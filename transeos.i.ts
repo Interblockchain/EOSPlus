@@ -1,3 +1,7 @@
+/* ==================================================
+(c) 2019 Copyright Transledger inc. All rights reserved 
+================================================== */
+
 export interface Network {
     host: string,
     port: number,
